@@ -1,493 +1,514 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  BookOpen, 
-  HelpCircle, 
-  MessageSquare, 
-  Download, 
-  Search, 
-  ShieldCheck, 
-  AlertTriangle, 
-  UserPlus, 
-  FileText,
-  CheckCircle2,
-  XCircle,
-  ArrowRight,
-  Send,
-  ChevronRight,
-  Info
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>傷害保險學習網</title>
+  
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 引入 FontAwesome 圖示庫 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- 引入 React 與 ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- 引入 Babel 用於瀏覽器內編譯 JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-// --- 資料來源 (從上傳的 PDF 與文字檔萃取) ---
+  <style>
+    /* 隱藏卷軸但保留滑動功能 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* 簡單的淡入動畫 */
+    .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+  
+  <!-- React 應用程式掛載點 -->
+  <div id="root"></div>
 
-const summaries = [
-  {
-    id: 1,
-    title: '傷害保險的定義',
-    icon: <ShieldCheck className="w-6 h-6 text-blue-500" />,
-    content: '依保險法第131條，於被保險人遭受意外傷害及其所致失能或死亡時，負給付保險金之責。必須是非由疾病引起之外來突發事故。',
-    tags: ['保險法', '定義']
-  },
-  {
-    id: 2,
-    title: '意外傷害三要件',
-    icon: <AlertTriangle className="w-6 h-6 text-orange-500" />,
-    content: '1. 外來性：非疾病引起，外在環境變化。\n2. 突發性：瞬間發生，無法事先防備。\n3. 偶然性(非自願性)：非預期或預測，非故意行為。',
-    tags: ['理賠要件', '重點考題']
-  },
-  {
-    id: 3,
-    title: '傷害險的特質',
-    icon: <Info className="w-6 h-6 text-indigo-500" />,
-    content: '僅承保意外事故、保費依「職業等級」(1-6級)計算而非年齡、通常為短期(1年)保險、失能給付項目多(11級80項)、壽險與產險皆可經營。',
-    tags: ['特質', '職業等級']
-  },
-  {
-    id: 4,
-    title: '因果關係認定',
-    icon: <FileText className="w-6 h-6 text-green-500" />,
-    content: '法院實務採「主力近因原則」或「相當因果關係」。原則上以事故發生日起「180日」內為限，超過若能證明因果關係仍可理賠。',
-    tags: ['因果關係', '180天']
-  },
-  {
-    id: 5,
-    title: '實務案例：高山症',
-    icon: <UserPlus className="w-6 h-6 text-purple-500" />,
-    content: '攀登高峰引發高山症猝死，最高法院認定：事先做足準備且同行僅一人發病，高山症屬「外來突發事故」，非一般可預料，判決為意外。',
-    tags: ['判例', '高山症']
-  },
-  {
-    id: 6,
-    title: '實務案例：闖平交道',
-    icon: <AlertTriangle className="w-6 h-6 text-red-500" />,
-    content: '騎機車闖平交道被火車撞死。司法實務認為，要保人或被保險人之「重大過失」所致事故仍屬承保範圍，保險人仍須理賠。',
-    tags: ['判例', '重大過失']
-  }
-];
+  <!-- React 程式碼 (必須標註 type="text/babel") -->
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
 
-const quizQuestions = [
-  {
-    question: '傷害保險的保費計算主要依據下列何者？',
-    options: ['被保險人的年齡', '被保險人的性別', '被保險人的職業等級', '被保險人的體況'],
-    answer: 2,
-    explanation: '傷害險的保險費依職業等級計算（1-6級），與人壽保險依年齡、性別計算不同。'
-  },
-  {
-    question: '下列何者不是構成「意外傷害事故」的必備條件？',
-    options: ['外來性', '必然性', '突發性', '偶然性(非自願性)'],
-    answer: 1,
-    explanation: '意外傷害事故必須具備：外來性、突發性、偶然性。必然發生的不屬於意外。'
-  },
-  {
-    question: '依據傷害保險單示範條款，自意外傷害事故發生之日起，原則上幾日內致成失能或死亡，保險公司應負給付之責？',
-    options: ['90日', '180日', '365日', '2年'],
-    answer: 1,
-    explanation: '自意外傷害事故發生日起180日以內死亡或所致失能，保險人應負給付之責。'
-  },
-  {
-    question: '關於傷害險中「合併先前已請領失能保險金」的計算方式(95年修訂後)，下列敘述何者正確？',
-    options: ['必須將前後兩次失能合併計算', '若合併計算得請領之金額低於單獨請領之金額者，被保險人可選擇不合併計算', '合併後保險公司可拒絕理賠', '依最高等級失能給付，不扣除前次'],
-    answer: 1,
-    explanation: '修訂後若合併計算得請領之金額低於單獨請領之金額者，被保險人得選擇不合併計算（單獨申請）。'
-  },
-  {
-    question: '某甲患有高血壓，某日因病發暈眩跌倒，頭部撞擊地面導致顱內出血死亡。依據「原因說」，保險公司是否理賠？',
-    options: ['理賠，因為顱內出血是外來傷害', '理賠，只要是跌倒都算意外', '不理賠，因為導致跌倒的原因是內發疾病', '由家屬與保險公司協議決定'],
-    answer: 2,
-    explanation: '依「原因說」，必須導致傷害或死亡之外界原因係出於意外，方屬意外事故。因疾病導致跌倒，外來原因非出於意外，故不理賠。'
-  }
-];
+    // --- 資料來源 (從上傳的 PDF 與文字檔萃取) ---
+    const summaries = [
+      {
+        id: 1,
+        title: '傷害保險的定義',
+        icon: <i className="fa-solid fa-shield-halved text-2xl text-blue-500"></i>,
+        content: '依保險法第131條，於被保險人遭受意外傷害及其所致失能或死亡時，負給付保險金之責。必須是非由疾病引起之外來突發事故。',
+        tags: ['保險法', '定義']
+      },
+      {
+        id: 2,
+        title: '意外傷害三要件',
+        icon: <i className="fa-solid fa-triangle-exclamation text-2xl text-orange-500"></i>,
+        content: '1. 外來性：非疾病引起，外在環境變化。\n2. 突發性：瞬間發生，無法事先防備。\n3. 偶然性(非自願性)：非預期或預測，非故意行為。',
+        tags: ['理賠要件', '重點考題']
+      },
+      {
+        id: 3,
+        title: '傷害險的特質',
+        icon: <i className="fa-solid fa-circle-info text-2xl text-indigo-500"></i>,
+        content: '僅承保意外事故、保費依「職業等級」(1-6級)計算而非年齡、通常為短期(1年)保險、失能給付項目多(11級80項)、壽險與產險皆可經營。',
+        tags: ['特質', '職業等級']
+      },
+      {
+        id: 4,
+        title: '因果關係認定',
+        icon: <i className="fa-solid fa-file-lines text-2xl text-green-500"></i>,
+        content: '法院實務採「主力近因原則」或「相當因果關係」。原則上以事故發生日起「180日」內為限，超過若能證明因果關係仍可理賠。',
+        tags: ['因果關係', '180天']
+      },
+      {
+        id: 5,
+        title: '實務案例：高山症',
+        icon: <i className="fa-solid fa-user-plus text-2xl text-purple-500"></i>,
+        content: '攀登高峰引發高山症猝死，最高法院認定：事先做足準備且同行僅一人發病，高山症屬「外來突發事故」，非一般可預料，判決為意外。',
+        tags: ['判例', '高山症']
+      },
+      {
+        id: 6,
+        title: '實務案例：闖平交道',
+        icon: <i className="fa-solid fa-triangle-exclamation text-2xl text-red-500"></i>,
+        content: '騎機車闖平交道被火車撞死。司法實務認為，要保人或被保險人之「重大過失」所致事故仍屬承保範圍，保險人仍須理賠。',
+        tags: ['判例', '重大過失']
+      }
+    ];
 
-const faqs = [
-  { q: "什麼是「主力近因原則」？", a: "指引起一連串損失事故中，其主要或有效而直接的第一個原因。例如跌倒導致頭部受傷，跌倒是最主要有效原因則理賠；若是心臟病發導致跌倒則不理賠。" },
-  { q: "喝酒猝死算意外嗎？", a: "實務判例中，若是喝酒導致嘔吐，吸入嘔吐物阻塞呼吸道窒息死亡，非身體內在疾病引發，客觀上屬外來突發事故，算作意外須理賠。" },
-  { q: "團體傷害保險跟個人傷害險差在哪？", a: "團保以雇主為要保人，員工為被保險人，具有員工福利性質，50人以上可採議定費率，手續較簡便，且提供轉換為個人保險的更約權。" }
-];
+    const quizQuestions = [
+      {
+        question: '傷害保險的保費計算主要依據下列何者？',
+        options: ['被保險人的年齡', '被保險人的性別', '被保險人的職業等級', '被保險人的體況'],
+        answer: 2,
+        explanation: '傷害險的保險費依職業等級計算（1-6級），與人壽保險依年齡、性別計算不同。'
+      },
+      {
+        question: '下列何者不是構成「意外傷害事故」的必備條件？',
+        options: ['外來性', '必然性', '突發性', '偶然性(非自願性)'],
+        answer: 1,
+        explanation: '意外傷害事故必須具備：外來性、突發性、偶然性。必然發生的不屬於意外。'
+      },
+      {
+        question: '依據傷害保險單示範條款，自意外傷害事故發生之日起，原則上幾日內致成失能或死亡，保險公司應負給付之責？',
+        options: ['90日', '180日', '365日', '2年'],
+        answer: 1,
+        explanation: '自意外傷害事故發生日起180日以內死亡或所致失能，保險人應負給付之責。'
+      },
+      {
+        question: '關於傷害險中「合併先前已請領失能保險金」的計算方式(95年修訂後)，下列敘述何者正確？',
+        options: ['必須將前後兩次失能合併計算', '若合併計算得請領之金額低於單獨請領之金額者，被保險人可選擇不合併計算', '合併後保險公司可拒絕理賠', '依最高等級失能給付，不扣除前次'],
+        answer: 1,
+        explanation: '修訂後若合併計算得請領之金額低於單獨請領之金額者，被保險人得選擇不合併計算（單獨申請）。'
+      },
+      {
+        question: '某甲患有高血壓，某日因病發暈眩跌倒，頭部撞擊地面導致顱內出血死亡。依據「原因說」，保險公司是否理賠？',
+        options: ['理賠，因為顱內出血是外來傷害', '理賠，只要是跌倒都算意外', '不理賠，因為導致跌倒的原因是內發疾病', '由家屬與保險公司協議決定'],
+        answer: 2,
+        explanation: '依「原因說」，必須導致傷害或死亡之外界原因係出於意外，方屬意外事故。因疾病導致跌倒，外來原因非出於意外，故不理賠。'
+      }
+    ];
 
-// --- 組件開始 ---
+    const faqs = [
+      { q: "什麼是「主力近因原則」？", a: "指引起一連串損失事故中，其主要或有效而直接的第一個原因。例如跌倒導致頭部受傷，跌倒是最主要有效原因則理賠；若是心臟病發導致跌倒則不理賠。" },
+      { q: "喝酒猝死算意外嗎？", a: "實務判例中，若是喝酒導致嘔吐，吸入嘔吐物阻塞呼吸道窒息死亡，非身體內在疾病引發，客觀上屬外來突發事故，算作意外須理賠。" },
+      { q: "團體傷害保險跟個人傷害險差在哪？", a: "團保以雇主為要保人，員工為被保險人，具有員工福利性質，50人以上可採議定費率，手續較簡便，且提供轉換為個人保險的更約權。" }
+    ];
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState('summary');
-  const [searchQuery, setSearchQuery] = useState('');
+    // --- 子組件 ---
+    function NavTab({ active, onClick, iconClass, label }) {
+      return (
+        <button 
+          onClick={onClick}
+          className={`flex items-center space-x-2 px-4 py-3 font-medium text-sm whitespace-nowrap transition-colors border-b-4 ${
+            active ? 'border-white text-white' : 'border-transparent text-blue-200 hover:text-white hover:bg-blue-700'
+          }`}
+        >
+          <i className={iconClass}></i>
+          <span>{label}</span>
+        </button>
+      );
+    }
 
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-      {/* Header */}
-      <header className="bg-blue-800 text-white shadow-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <ShieldCheck className="w-8 h-8 text-blue-300" />
-            <div>
-              <h1 className="text-xl font-bold">企管系考前衝刺：傷害保險特訓網</h1>
-              <p className="text-xs text-blue-200">保險學期末考專用學習資源</p>
+    function SummarySection({ searchQuery }) {
+      const filteredSummaries = summaries.filter(s => 
+        s.title.includes(searchQuery) || 
+        s.content.includes(searchQuery) ||
+        s.tags.some(t => t.includes(searchQuery))
+      );
+
+      return (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center">
+              <i className="fa-solid fa-book-open mr-2 text-blue-600"></i> 考前重點摘要
+            </h2>
+          </div>
+
+          {filteredSummaries.length === 0 ? (
+            <div className="text-center py-12 text-slate-500 bg-white rounded-lg shadow-sm border border-slate-200">
+              <i className="fa-solid fa-magnifying-glass text-5xl text-slate-300 mb-3 block"></i>
+              <p>找不到符合「{searchQuery}」的重點內容，請嘗試其他關鍵字。</p>
             </div>
-          </div>
-          <div className="relative w-full md:w-64">
-            <input 
-              type="text" 
-              placeholder="搜尋關鍵字 (例：主力近因)..." 
-              className="w-full pl-10 pr-4 py-2 rounded-full text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setActiveTab('summary'); // 搜尋時切換回摘要頁
-              }}
-            />
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-          </div>
-        </div>
-        
-        {/* Navigation Tabs */}
-        <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto no-scrollbar border-t border-blue-700">
-          <NavTab active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={<BookOpen size={18}/>} label="重點摘要" />
-          <NavTab active={activeTab === 'practice'} onClick={() => setActiveTab('practice')} icon={<CheckCircle2 size={18}/>} label="題目練習" />
-          <NavTab active={activeTab === 'faq'} onClick={() => setActiveTab('faq')} icon={<MessageSquare size={18}/>} label="互動問答(FAQ)" />
-          <NavTab active={activeTab === 'resources'} onClick={() => setActiveTab('resources')} icon={<Download size={18}/>} label="資源庫" />
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {activeTab === 'summary' && <SummarySection searchQuery={searchQuery} />}
-        {activeTab === 'practice' && <PracticeSection />}
-        {activeTab === 'faq' && <FaqSection />}
-        {activeTab === 'resources' && <ResourceSection />}
-      </main>
-      
-      {/* Footer */}
-      <footer className="bg-slate-800 text-slate-400 py-6 text-center text-sm">
-        <p>© 2026 企管系保險學學習小組. 內容摘錄自《傷害保險》授課講義。</p>
-        <p className="mt-1">祝期末考順利 High Pass！</p>
-      </footer>
-    </div>
-  );
-}
-
-// --- 子組件 ---
-
-function NavTab({ active, onClick, icon, label }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`flex items-center space-x-2 px-4 py-3 font-medium text-sm whitespace-nowrap transition-colors border-b-4 ${
-        active ? 'border-white text-white' : 'border-transparent text-blue-200 hover:text-white hover:bg-blue-700'
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function SummarySection({ searchQuery }) {
-  const filteredSummaries = summaries.filter(s => 
-    s.title.includes(searchQuery) || 
-    s.content.includes(searchQuery) ||
-    s.tags.some(t => t.includes(searchQuery))
-  );
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center">
-          <BookOpen className="mr-2 text-blue-600" /> 考前重點摘要
-        </h2>
-      </div>
-
-      {filteredSummaries.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 bg-white rounded-lg shadow-sm border border-slate-200">
-          <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-          <p>找不到符合「{searchQuery}」的重點內容，請嘗試其他關鍵字。</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSummaries.map(item => (
-            <div key={item.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2 bg-slate-50 rounded-lg">
-                  {item.icon}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSummaries.map(item => (
+                <div key={item.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="p-2 bg-slate-50 rounded-lg flex items-center justify-center w-10 h-10">
+                      {item.icon}
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">{item.title}</h3>
+                  </div>
+                  <p className="text-slate-600 text-sm leading-relaxed mb-4 whitespace-pre-line">
+                    {item.content}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-slate-100">
+                    {item.tags.map((tag, idx) => (
+                      <span key={idx} className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-md font-medium">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">{item.title}</h3>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function PracticeSection() {
+      const [currentQ, setCurrentQ] = useState(0);
+      const [selectedOpt, setSelectedOpt] = useState(null);
+      const [isSubmitted, setIsSubmitted] = useState(false);
+      const [score, setScore] = useState(0);
+      const [showResult, setShowResult] = useState(false);
+
+      const q = quizQuestions[currentQ];
+
+      const handleSubmit = () => {
+        if (selectedOpt === q.answer) {
+          setScore(score + 1);
+        }
+        setIsSubmitted(true);
+      };
+
+      const handleNext = () => {
+        if (currentQ < quizQuestions.length - 1) {
+          setCurrentQ(currentQ + 1);
+          setSelectedOpt(null);
+          setIsSubmitted(false);
+        } else {
+          setShowResult(true);
+        }
+      };
+
+      const resetQuiz = () => {
+        setCurrentQ(0);
+        setSelectedOpt(null);
+        setIsSubmitted(false);
+        setScore(0);
+        setShowResult(false);
+      };
+
+      if (showResult) {
+        return (
+          <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center animate-fade-in">
+            <h2 className="text-3xl font-bold text-slate-800 mb-4">測驗結束！</h2>
+            <div className="text-6xl font-black text-blue-600 mb-6">
+              {score * (100 / quizQuestions.length)} <span className="text-2xl text-slate-500">分</span>
+            </div>
+            <p className="text-slate-600 mb-8">
+              你答對了 {quizQuestions.length} 題中的 {score} 題。
+              {score === quizQuestions.length ? ' 太神啦！期末考穩拿 A+！' : ' 再複習一下重點摘要，你可以做得更好！'}
+            </p>
+            <button 
+              onClick={resetQuiz}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition-colors"
+            >
+              重新測驗
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="max-w-3xl mx-auto animate-fade-in">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center">
+              <i className="fa-solid fa-circle-check mr-2 text-green-600"></i> 觀念牛刀小試
+            </h2>
+            <span className="bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-sm font-semibold">
+              問題 {currentQ + 1} / {quizQuestions.length}
+            </span>
+          </div>
+
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 mb-6">
+            <h3 className="text-xl font-medium text-slate-800 mb-6">{q.question}</h3>
+            
+            <div className="space-y-3">
+              {q.options.map((opt, idx) => {
+                let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all ";
+                
+                if (!isSubmitted) {
+                  btnClass += selectedOpt === idx 
+                    ? "border-blue-500 bg-blue-50 text-blue-800" 
+                    : "border-slate-100 hover:border-blue-200 hover:bg-slate-50 text-slate-600";
+                } else {
+                  if (idx === q.answer) {
+                    btnClass += "border-green-500 bg-green-50 text-green-800";
+                  } else if (idx === selectedOpt && selectedOpt !== q.answer) {
+                    btnClass += "border-red-500 bg-red-50 text-red-800";
+                  } else {
+                    btnClass += "border-slate-100 bg-slate-50 text-slate-400 opacity-50";
+                  }
+                }
+
+                return (
+                  <button
+                    key={idx}
+                    disabled={isSubmitted}
+                    onClick={() => setSelectedOpt(idx)}
+                    className={btnClass}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{opt}</span>
+                      {isSubmitted && idx === q.answer && <i className="fa-solid fa-circle-check text-green-500"></i>}
+                      {isSubmitted && idx === selectedOpt && selectedOpt !== q.answer && <i className="fa-solid fa-circle-xmark text-red-500"></i>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {isSubmitted && (
+              <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-xl flex items-start space-x-3">
+                <i className="fa-solid fa-circle-info text-xl flex-shrink-0 mt-0.5"></i>
+                <div>
+                  <p className="font-bold mb-1">解析：</p>
+                  <p className="text-sm leading-relaxed">{q.explanation}</p>
+                </div>
               </div>
-              <p className="text-slate-600 text-sm leading-relaxed mb-4 whitespace-pre-line">
-                {item.content}
-              </p>
-              <div className="flex flex-wrap gap-2 mt-auto pt-4 border-t border-slate-100">
-                {item.tags.map((tag, idx) => (
-                  <span key={idx} className="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-md font-medium">
-                    #{tag}
-                  </span>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            {!isSubmitted ? (
+              <button
+                disabled={selectedOpt === null}
+                onClick={handleSubmit}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-full transition-colors flex items-center"
+              >
+                確認答案
+              </button>
+            ) : (
+              <button
+                onClick={handleNext}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-full transition-colors flex items-center"
+              >
+                下一題 <i className="fa-solid fa-arrow-right ml-2"></i>
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function FaqSection() {
+      const [messages, setMessages] = useState([
+        { role: 'bot', text: '同學你好！我是保險學助教機器人。關於「傷害保險」有什麼不懂的地方嗎？你可以點擊下方的常見問題，或是試著了解一些實務案例喔！' }
+      ]);
+      const messagesEndRef = useRef(null);
+
+      const handleAsk = (question, answer) => {
+        setMessages(prev => [...prev, { role: 'user', text: question }]);
+        setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'bot', text: answer }]);
+        }, 600);
+      };
+
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, [messages]);
+
+      const customKeywords = [
+        { k: "高山症", a: "實務上（如最高法院判決），攀登高峰事先作足準備，卻發生嚴重高山症猝死，因其屬外來突發且非一般可預料，認定為意外事故，保險公司須理賠。" },
+        { k: "平交道", a: "騎機車闖平交道遭撞死，雖然是故意違規（重大過失），但在司法實務上，只要不是「故意自殺」，重大過失所致的事故仍屬承保範圍，保險公司應理賠。" },
+        { k: "失能等級", a: "現行傷害保險失能等級表（自109年1月起），共分為 11 級 80 項。給付比例從一級失能的 100% 到十一級失能的 5% 不等。" }
+      ];
+
+      return (
+        <div className="max-w-4xl mx-auto flex flex-col h-[75vh] animate-fade-in">
+          <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
+            <i className="fa-solid fa-message mr-2 text-blue-600"></i> 互動答疑與 FAQ
+          </h2>
+          
+          <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-50">
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed ${
+                    msg.role === 'user' 
+                      ? 'bg-blue-600 text-white rounded-tr-none' 
+                      : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none shadow-sm'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-200">
+              <p className="text-xs text-slate-500 font-bold mb-3 uppercase tracking-wider">點擊快速發問</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {faqs.map((faq, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => handleAsk(faq.q, faq.a)}
+                    className="bg-slate-100 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-slate-700 text-xs px-3 py-2 rounded-full transition-colors text-left"
+                  >
+                    {faq.q}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {customKeywords.map((item, idx) => (
+                  <button 
+                    key={`k-${idx}`}
+                    onClick={() => handleAsk(`我想了解「${item.k}」的判例或規定`, item.a)}
+                    className="bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium text-xs px-3 py-2 rounded-full transition-colors flex items-center"
+                  >
+                    <i className="fa-solid fa-magnifying-glass mr-1"></i> {item.k} 案例
+                  </button>
                 ))}
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function PracticeSection() {
-  const [currentQ, setCurrentQ] = useState(0);
-  const [selectedOpt, setSelectedOpt] = useState(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-
-  const q = quizQuestions[currentQ];
-
-  const handleSubmit = () => {
-    if (selectedOpt === q.answer) {
-      setScore(score + 1);
+      );
     }
-    setIsSubmitted(true);
-  };
 
-  const handleNext = () => {
-    if (currentQ < quizQuestions.length - 1) {
-      setCurrentQ(currentQ + 1);
-      setSelectedOpt(null);
-      setIsSubmitted(false);
-    } else {
-      setShowResult(true);
-    }
-  };
+    function ResourceSection() {
+      const resources = [
+        { title: '1150512傷害險_授課講義.pdf', type: 'PDF', size: '2.4 MB', desc: '期末考主要出題範圍，包含法規演進與實務判例。' },
+        { title: '傷害保險的定義與特質.txt', type: 'TXT', size: '15 KB', desc: '重點名詞解釋與傷害保險三要件快速記憶表。' },
+        { title: '歷年傷害險失能等級表對照.xlsx', type: 'XLSX', size: '45 KB', desc: '從63年至109年的失能給付項目演進比較。' },
+        { title: '保險法規彙編(傷害險章節).pdf', type: 'PDF', size: '1.1 MB', desc: '補充閱讀教材，建議學有餘力再看。' }
+      ];
 
-  const resetQuiz = () => {
-    setCurrentQ(0);
-    setSelectedOpt(null);
-    setIsSubmitted(false);
-    setScore(0);
-    setShowResult(false);
-  };
+      return (
+        <div className="max-w-4xl mx-auto animate-fade-in">
+          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+            <i className="fa-solid fa-download mr-2 text-blue-600"></i> 課程資源下載區
+          </h2>
 
-  if (showResult) {
-    return (
-      <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center animate-fade-in">
-        <h2 className="text-3xl font-bold text-slate-800 mb-4">測驗結束！</h2>
-        <div className="text-6xl font-black text-blue-600 mb-6">
-          {score * (100 / quizQuestions.length)} <span className="text-2xl text-slate-500">分</span>
-        </div>
-        <p className="text-slate-600 mb-8">
-          你答對了 {quizQuestions.length} 題中的 {score} 題。
-          {score === quizQuestions.length ? ' 太神啦！期末考穩拿 A+！' : ' 再複習一下重點摘要，你可以做得更好！'}
-        </p>
-        <button 
-          onClick={resetQuiz}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition-colors"
-        >
-          重新測驗
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-3xl mx-auto animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center">
-          <CheckCircle2 className="mr-2 text-green-600" /> 觀念牛刀小試
-        </h2>
-        <span className="bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-sm font-semibold">
-          問題 {currentQ + 1} / {quizQuestions.length}
-        </span>
-      </div>
-
-      <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 mb-6">
-        <h3 className="text-xl font-medium text-slate-800 mb-6">{q.question}</h3>
-        
-        <div className="space-y-3">
-          {q.options.map((opt, idx) => {
-            let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all ";
-            
-            if (!isSubmitted) {
-              btnClass += selectedOpt === idx 
-                ? "border-blue-500 bg-blue-50 text-blue-800" 
-                : "border-slate-100 hover:border-blue-200 hover:bg-slate-50 text-slate-600";
-            } else {
-              if (idx === q.answer) {
-                btnClass += "border-green-500 bg-green-50 text-green-800"; // Correct answer
-              } else if (idx === selectedOpt && selectedOpt !== q.answer) {
-                btnClass += "border-red-500 bg-red-50 text-red-800"; // Wrong selected
-              } else {
-                btnClass += "border-slate-100 bg-slate-50 text-slate-400 opacity-50"; // Others
-              }
-            }
-
-            return (
-              <button
-                key={idx}
-                disabled={isSubmitted}
-                onClick={() => setSelectedOpt(idx)}
-                className={btnClass}
-              >
-                <div className="flex items-center justify-between">
-                  <span>{opt}</span>
-                  {isSubmitted && idx === q.answer && <CheckCircle2 className="text-green-500" />}
-                  {isSubmitted && idx === selectedOpt && selectedOpt !== q.answer && <XCircle className="text-red-500" />}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="divide-y divide-slate-100">
+              {resources.map((res, idx) => (
+                <div key={idx} className="p-4 md:p-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between group">
+                  <div className="flex items-start space-x-4 mb-4 md:mb-0">
+                    <div className={`p-3 rounded-xl flex-shrink-0 flex items-center justify-center w-12 h-12 text-xl ${res.type === 'PDF' ? 'bg-red-50 text-red-500' : res.type === 'TXT' ? 'bg-blue-50 text-blue-500' : 'bg-green-50 text-green-500'}`}>
+                      <i className="fa-solid fa-file-lines"></i>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-800">{res.title}</h3>
+                      <p className="text-sm text-slate-500 mt-1">{res.desc}</p>
+                      <span className="inline-block mt-2 text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded">
+                        {res.type} • {res.size}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={() => alert(`模擬下載：${res.title}`)}
+                    className="self-start md:self-center bg-white border border-slate-200 hover:border-blue-500 hover:text-blue-600 text-slate-600 font-medium py-2 px-4 rounded-lg transition-colors flex items-center text-sm shadow-sm"
+                  >
+                    下載檔案 <i className="fa-solid fa-download ml-2"></i>
+                  </button>
                 </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {isSubmitted && (
-          <div className="mt-6 p-4 bg-blue-50 text-blue-800 rounded-xl flex items-start space-x-3">
-            <Info className="w-6 h-6 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold mb-1">解析：</p>
-              <p className="text-sm leading-relaxed">{q.explanation}</p>
+              ))}
             </div>
           </div>
-        )}
-      </div>
-
-      <div className="flex justify-end">
-        {!isSubmitted ? (
-          <button
-            disabled={selectedOpt === null}
-            onClick={handleSubmit}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-full transition-colors flex items-center"
-          >
-            確認答案
-          </button>
-        ) : (
-          <button
-            onClick={handleNext}
-            className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-full transition-colors flex items-center"
-          >
-            下一題 <ArrowRight className="ml-2 w-4 h-4" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FaqSection() {
-  const [messages, setMessages] = useState([
-    { role: 'bot', text: '同學你好！我是保險學助教機器人。關於「傷害保險」有什麼不懂的地方嗎？你可以點擊下方的常見問題，或是試著了解一些實務案例喔！' }
-  ]);
-  const messagesEndRef = useRef(null);
-
-  const handleAsk = (question, answer) => {
-    setMessages(prev => [...prev, { role: 'user', text: question }]);
-    
-    // Simulate thinking delay
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'bot', text: answer }]);
-    }, 600);
-  };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const customKeywords = [
-    { k: "高山症", a: "實務上（如最高法院判決），攀登高峰事先作足準備，卻發生嚴重高山症猝死，因其屬外來突發且非一般可預料，認定為意外事故，保險公司須理賠。" },
-    { k: "平交道", a: "騎機車闖平交道遭撞死，雖然是故意違規（重大過失），但在司法實務上，只要不是「故意自殺」，重大過失所致的事故仍屬承保範圍，保險公司應理賠。" },
-    { k: "失能等級", a: "現行傷害保險失能等級表（自109年1月起），共分為 11 級 80 項。給付比例從一級失能的 100% 到十一級失能的 5% 不等。" }
-  ];
-
-  return (
-    <div className="max-w-4xl mx-auto flex flex-col h-[75vh] animate-fade-in">
-      <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center">
-        <MessageSquare className="mr-2 text-blue-600" /> 互動答疑與 FAQ
-      </h2>
-      
-      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-50">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed ${
-                msg.role === 'user' 
-                  ? 'bg-blue-600 text-white rounded-tr-none' 
-                  : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none shadow-sm'
-              }`}>
-                {msg.text}
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Suggested Prompts Area */}
-        <div className="p-4 bg-white border-t border-slate-200">
-          <p className="text-xs text-slate-500 font-bold mb-3 uppercase tracking-wider">點擊快速發問</p>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {faqs.map((faq, idx) => (
-              <button 
-                key={idx}
-                onClick={() => handleAsk(faq.q, faq.a)}
-                className="bg-slate-100 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-slate-700 text-xs px-3 py-2 rounded-full transition-colors text-left"
-              >
-                {faq.q}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {customKeywords.map((item, idx) => (
-              <button 
-                key={`k-${idx}`}
-                onClick={() => handleAsk(`我想了解「${item.k}」的判例或規定`, item.a)}
-                className="bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium text-xs px-3 py-2 rounded-full transition-colors flex items-center"
-              >
-                <Search className="w-3 h-3 mr-1" /> {item.k} 案例
-              </button>
-            ))}
+          
+          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex items-start text-yellow-800 text-sm">
+            <i className="fa-solid fa-triangle-exclamation text-xl mr-3 flex-shrink-0"></i>
+            <p>注意：以上資源皆為期末考範圍。請同學務必下載詳讀，切勿將未公開之講義隨意外流至校外論壇。</p>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
+      );
+    }
 
-function ResourceSection() {
-  const resources = [
-    { title: '1150512傷害險_授課講義.pdf', type: 'PDF', size: '2.4 MB', desc: '期末考主要出題範圍，包含法規演進與實務判例。' },
-    { title: '傷害保險的定義與特質.txt', type: 'TXT', size: '15 KB', desc: '重點名詞解釋與傷害保險三要件快速記憶表。' },
-    { title: '歷年傷害險失能等級表對照.xlsx', type: 'XLSX', size: '45 KB', desc: '從63年至109年的失能給付項目演進比較。' },
-    { title: '保險法規彙編(傷害險章節).pdf', type: 'PDF', size: '1.1 MB', desc: '補充閱讀教材，建議學有餘力再看。' }
-  ];
+    function App() {
+      const [activeTab, setActiveTab] = useState('summary');
+      const [searchQuery, setSearchQuery] = useState('');
 
-  return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center">
-        <Download className="mr-2 text-blue-600" /> 課程資源下載區
-      </h2>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="divide-y divide-slate-100">
-          {resources.map((res, idx) => (
-            <div key={idx} className="p-4 md:p-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between group">
-              <div className="flex items-start space-x-4 mb-4 md:mb-0">
-                <div className={`p-3 rounded-xl flex-shrink-0 ${res.type === 'PDF' ? 'bg-red-50 text-red-500' : res.type === 'TXT' ? 'bg-blue-50 text-blue-500' : 'bg-green-50 text-green-500'}`}>
-                  <FileText className="w-6 h-6" />
-                </div>
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+          {/* Header */}
+          <header className="bg-blue-800 text-white shadow-md sticky top-0 z-50">
+            <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between">
+              <div className="flex items-center space-x-2 mb-4 md:mb-0">
+                <i className="fa-solid fa-shield-halved text-3xl text-blue-300"></i>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800">{res.title}</h3>
-                  <p className="text-sm text-slate-500 mt-1">{res.desc}</p>
-                  <span className="inline-block mt-2 text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded">
-                    {res.type} • {res.size}
-                  </span>
+                  <h1 className="text-xl font-bold">企管系考前衝刺：傷害保險特訓網</h1>
+                  <p className="text-xs text-blue-200">保險學期末考專用學習資源</p>
                 </div>
               </div>
-              
-              <button 
-                onClick={() => alert(`模擬下載：${res.title}`)}
-                className="self-start md:self-center bg-white border border-slate-200 hover:border-blue-500 hover:text-blue-600 text-slate-600 font-medium py-2 px-4 rounded-lg transition-colors flex items-center text-sm shadow-sm"
-              >
-                下載檔案 <Download className="w-4 h-4 ml-2" />
-              </button>
+              <div className="relative w-full md:w-64">
+                <input 
+                  type="text" 
+                  placeholder="搜尋關鍵字 (例：主力近因)..." 
+                  className="w-full pl-10 pr-4 py-2 rounded-full text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setActiveTab('summary');
+                  }}
+                />
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+              </div>
             </div>
-          ))}
+            
+            {/* Navigation Tabs */}
+            <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto no-scrollbar border-t border-blue-700">
+              <NavTab active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} iconClass="fa-solid fa-book-open" label="重點摘要" />
+              <NavTab active={activeTab === 'practice'} onClick={() => setActiveTab('practice')} iconClass="fa-solid fa-circle-check" label="題目練習" />
+              <NavTab active={activeTab === 'faq'} onClick={() => setActiveTab('faq')} iconClass="fa-solid fa-message" label="互動問答(FAQ)" />
+              <NavTab active={activeTab === 'resources'} onClick={() => setActiveTab('resources')} iconClass="fa-solid fa-download" label="資源庫" />
+            </div>
+          </header>
+
+          {/* Main Content Area */}
+          <main className="max-w-6xl mx-auto px-4 py-8">
+            {activeTab === 'summary' && <SummarySection searchQuery={searchQuery} />}
+            {activeTab === 'practice' && <PracticeSection />}
+            {activeTab === 'faq' && <FaqSection />}
+            {activeTab === 'resources' && <ResourceSection />}
+          </main>
+          
+          {/* Footer */}
+          <footer className="bg-slate-800 text-slate-400 py-6 text-center text-sm">
+            <p>© 2026 企管系保險學學習小組. 內容摘錄自《傷害保險》授課講義。</p>
+            <p className="mt-1">祝期末考順利 High Pass！</p>
+          </footer>
         </div>
-      </div>
-      
-      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl flex items-start text-yellow-800 text-sm">
-        <AlertTriangle className="w-5 h-5 mr-3 flex-shrink-0" />
-        <p>注意：以上資源皆為期末考範圍。請同學務必下載詳讀，切勿將未公開之講義隨意外流至校外論壇。</p>
-      </div>
-    </div>
-  );
-}
+      );
+    }
+
+    // 將 App 渲染到 DOM 中
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
